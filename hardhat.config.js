@@ -6,6 +6,7 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 module.exports = {
   solidity: "0.8.20", // ⬅️ updated from 0.8.19
+   defaultNetwork: "hardhat",
   networks: {
     sepolia: {
       url: SEPOLIA_RPC_URL,
