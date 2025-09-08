@@ -24,9 +24,9 @@ const campaignABI = [
 
 const SEPOLIA_RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/dnvuizKMmhQ4l1UKH5eSc";
 
-//================================================================
+
 // 1. STATE MANAGEMENT (CONTEXT)
-//================================================================
+
 const StateContext = createContext();
 const ThemeContext = createContext();
 
@@ -133,9 +133,9 @@ const ThemeProvider = ({ children }) => {
 const useStateContext = () => useContext(StateContext);
 const useTheme = () => useContext(ThemeContext);
 
-//================================================================
+
 // 2. UI & ANIMATION COMPONENTS
-//================================================================
+
 const ToastContext = createContext();
 const useToast = () => useContext(ToastContext);
 const ToastProvider = ({ children }) => {
@@ -229,9 +229,9 @@ const ThreeScene = () => {
 };
 
 
-//================================================================
+
 // 3. PAGE COMPONENTS
-//================================================================
+
 
 function Navbar() {
   const { connectWallet, walletAddress } = useStateContext();
@@ -460,9 +460,9 @@ function Contact() {
     );
 }
 
-//================================================================
+
 // 4. MAIN APP COMPONENT
-//================================================================
+
 export default function App() {
   const [isAppLoading, setIsAppLoading] = useState(true);
 
