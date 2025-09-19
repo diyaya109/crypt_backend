@@ -1,44 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-// Note: We're using MOCK DATA here to build the UI.
-// In a later step, we will replace this with real data from your smart contract.
-const mockCampaigns = [
-    { 
-        id: '0x1A2b3c4D5e6F7g8H9i0JkL1m2N3o4P5q6R7s8T9u', 
-        title: 'Decentralized Social Media Platform', 
-        creator: '0xabc...def', 
-        progress: 75, 
-        image: 'https://placehold.co/600x400/1e293b/ffffff?text=Project+A' 
-    },
-    { 
-        id: '0x2B3c4D5e6F7g8H9i0JkL1m2N3o4P5q6R7s8T9u1A', 
-        title: 'NFT Marketplace for Independent Artists', 
-        creator: '0x123...456', 
-        progress: 40, 
-        image: 'https://placehold.co/600x400/1e293b/ffffff?text=Project+B' 
-    },
-    { 
-        id: '0x3C4d5E6f7G8h9I0j1K2l3M4n5O6p7Q8r9S0t1U2v', 
-        title: 'Renewable Energy Blockchain Initiative', 
-        creator: '0x789...abc', 
-        progress: 92, 
-        image: 'https://placehold.co/600x400/1e293b/ffffff?text=Project+C' 
-    },
-];
-
+import { useStateContext } from '../context';
+import { getFactory, fetchCampaignDetails } from '../utils/contract';
+import { ethers } from "ethers";
 
 export default function AllCampaigns() {
-    // We will replace the mock data with a call to the contract later
-    const [campaigns, setCampaigns] = useState(mockCampaigns);
-    const [isLoading, setIsLoading] = useState(false); // Will be used for real data fetching
+    const { provider, refresh } = useStateContext(); // Get the 'refresh' state
+    const [campaigns, setCampaigns] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Your original useEffect logic will be re-integrated here later
-    // For now, we are just displaying the mock data.
+    const fetchCampaigns = async () => {
+        setIsLoading(true);
+        if (!provider) {
+            console.warn("Provider is not available. Please connect your wallet.");
+            setIsLoading(false);
+            return;
+        }
+        
+        try {
+            const factory = getFactory(provider);
+            const campaignAddresses = await factory.allCampaigns();
+
+            const fetchedCampaigns = await Promise.all(
+                campaignAddresses.map(async (address) => {
+                    const details = await fetchCampaignDetails(address, provider);
+
+                    const goalInETH = ethers.formatEther(details.goal);
+                    const contributedInETH = ethers.formatEther(details.totalContributed);
+                    const progress = (contributedInETH / goalInETH) * 100;
+
+                    // Note: Your metaURI is a string. You need a separate service
+                    // to parse the metadata and get the image/title.
+                    // For now, let's use a placeholder until you add that logic.
+                    const dummyData = {
+                        title: "Untitled Campaign",
+                        image: 'https://placehold.co/600x400/1e293b/ffffff?text=Loading...'
+                    };
+                    try {
+                        const meta = await fetch(details.metaURI).then(res => res.json());
+                        dummyData.title = meta.title;
+                        dummyData.image = meta.image;
+                    } catch (e) {
+                        console.error(`Failed to fetch metadata for ${address}`, e);
+                    }
+                    
+                    return {
+                        id: address,
+                        creator: details.creator,
+                        progress: Math.min(100, progress),
+                        ...dummyData,
+                    };
+                })
+            );
+            setCampaigns(fetchedCampaigns);
+        } catch (error) {
+            console.error("Error fetching campaigns:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchCampaigns();
+    }, [provider, refresh]); // 👈 Add `refresh` to the dependency array
 
     return (
         <div className="container mx-auto p-8">
-            {/* === Hero Section === */}
             <div className="text-center mb-16">
                 <h1 className="text-5xl font-extrabold text-gray-800 mb-4 animate-fade-in-down">
                     Fund the Future, Decentralized.
@@ -48,7 +75,6 @@ export default function AllCampaigns() {
                 </p>
             </div>
             
-            {/* === Campaigns Section === */}
             <h2 className="text-3xl font-bold text-gray-800 mb-8 border-b-2 border-blue-200 pb-2">
                 Active Campaigns
             </h2>
@@ -62,11 +88,10 @@ export default function AllCampaigns() {
                                 <h3 className="text-xl font-bold text-gray-800 mb-2 truncate">{campaign.title}</h3>
                                 <p className="text-sm text-gray-500 mb-4">by {campaign.creator}</p>
                                 
-                                {/* Progress Bar */}
                                 <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
                                     <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${campaign.progress}%` }}></div>
                                 </div>
-                                <p className="text-sm font-medium text-gray-700 mb-4">{campaign.progress}% Funded</p>
+                                <p className="text-sm font-medium text-gray-700 mb-4">{campaign.progress.toFixed(2)}% Funded</p>
                                 
                                 <Link to={`/campaign/${campaign.id}`} className="block text-center w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-900 transition font-semibold">
                                     View Details
@@ -88,4 +113,3 @@ export default function AllCampaigns() {
         </div>
     );
 }
-

@@ -1,27 +1,57 @@
 import React, { useState, createContext, useContext } from 'react';
-// import { ethers } from "ethers"; // We will enable this when connecting to the contract
+import { ethers } from "ethers";
 
 const StateContext = createContext();
 
 export const StateContextProvider = ({ children }) => {
     const [walletAddress, setWalletAddress] = useState('');
+    const [provider, setProvider] = useState(null);
+    const [signer, setSigner] = useState(null);
+    const [refresh, setRefresh] = useState(false); // Add a new state for refreshing
 
     const connectWallet = async () => {
-        // We will add MetaMask connection logic here later
-        if (walletAddress) {
+        try {
+            if (!window.ethereum) {
+                alert("Please install MetaMask to use this dApp!");
+                return;
+            }
+
+            const newProvider = new ethers.BrowserProvider(window.ethereum);
+            setProvider(newProvider);
+
+            const newSigner = await newProvider.getSigner();
+            setSigner(newSigner);
+
+            const address = await newSigner.getAddress();
+            setWalletAddress(address);
+            console.log("Wallet Connected:", address);
+        } catch (error) {
+            console.error("Failed to connect wallet:", error);
             setWalletAddress('');
-            console.log("Wallet Disconnected");
-        } else {
-            const mockAddress = "0xAbC123...dEF456";
-            setWalletAddress(mockAddress);
-            console.log("Wallet Connected:", mockAddress);
         }
+    };
+
+    const disconnectWallet = () => {
+        setWalletAddress('');
+        setProvider(null);
+        setSigner(null);
+        console.log("Wallet Disconnected");
+    };
+    
+    // Function to toggle the refresh state
+    const triggerRefresh = () => {
+        setRefresh(prev => !prev);
     };
 
     return (
         <StateContext.Provider value={{
             connectWallet,
+            disconnectWallet,
             walletAddress,
+            provider,
+            signer,
+            triggerRefresh, // Make this function globally available
+            refresh, // Expose the refresh state
         }}>
             {children}
         </StateContext.Provider>
@@ -29,4 +59,3 @@ export const StateContextProvider = ({ children }) => {
 };
 
 export const useStateContext = () => useContext(StateContext);
-

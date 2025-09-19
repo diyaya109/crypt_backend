@@ -1,41 +1,47 @@
+// src/pages/CampaignDetail.jsx
+
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getCampaign } from "../utils/contract";
+import { fetchCampaignDetails } from "../utils/contract";
 import { ethers } from "ethers";
+import { useStateContext } from "../context";
 
 export default function CampaignDetail() {
   const { address } = useParams();
-  const [summary, setSummary] = useState(null);
+  const { provider } = useStateContext();
+  const [details, setDetails] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadCampaign() {
+      if (!provider) {
+        console.warn("Provider is not available. Please connect your wallet.");
+        setIsLoading(false);
+        return;
+      }
       try {
-        if (!window.ethereum) throw new Error("MetaMask not found");
-
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const campaign = getCampaign(address, provider);
-
-        // Example: assuming your Campaign contract has getSummary()
-        const campaignSummary = await campaign.getSummary();
-        setSummary(campaignSummary);
+        const campaignDetails = await fetchCampaignDetails(address, provider);
+        setDetails(campaignDetails);
       } catch (err) {
         console.error("Error loading campaign:", err);
+      } finally {
+        setIsLoading(false);
       }
     }
     loadCampaign();
-  }, [address]);
+  }, [address, provider]);
 
-  if (!summary) return <p>Loading campaign...</p>;
+  if (isLoading) return <p>Loading campaign details...</p>;
+  if (!details) return <p>Campaign not found or failed to load.</p>;
 
   return (
     <div style={{ padding: "1rem" }}>
       <h2>Campaign Details</h2>
       <p><b>Address:</b> {address}</p>
-      <p><b>Minimum Contribution:</b> {summary[0]?.toString()}</p>
-      <p><b>Balance:</b> {ethers.formatEther(summary[1] || "0")} ETH</p>
-      <p><b>Requests Count:</b> {summary[2]?.toString()}</p>
-      <p><b>Approvers Count:</b> {summary[3]?.toString()}</p>
-      <p><b>Manager:</b> {summary[4]}</p>
+      <p><b>Creator:</b> {details.creator}</p>
+      <p><b>Goal:</b> {ethers.formatEther(details.goal)} ETH</p>
+      <p><b>Total Contributed:</b> {ethers.formatEther(details.totalContributed)} ETH</p>
+      <p><b>Deadline:</b> {new Date(Number(details.deadline) * 1000).toLocaleString()}</p>
     </div>
   );
 }
