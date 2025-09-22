@@ -12,7 +12,7 @@ const BackersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6
 // ================================================================
 // CONTRACT DETAILS
 // ================================================================
-const contractAddress = "0x6961e0169909A9d4b3033f6a548E3a42874C909A";
+const contractAddress = "0x68c576761B3B3a7365d5f2912fb8dd2221c042b2";
 const SEPOLIA_RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/dnvuizKMmhQ4l1UKH5eSc";
 
 const factoryABI = [

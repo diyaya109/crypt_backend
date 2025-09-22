@@ -10,11 +10,12 @@ Factory  = vending machine that makes many campaigns
 
 contract Campaign is ReentrancyGuard {
     address public creator;
-    string public metaURI;           // IPFS metadata (title/desc/image)
-    uint256 public goal;             // fundraising goal (in wei)
-    uint256 public deadline;         // unix timestamp
+    string public metaURI;               // IPFS metadata (title/desc/image)
+    uint256 public goal;                 // fundraising goal (in wei)
+    uint256 public deadline;             // unix timestamp
     uint256 public totalContributed;
     bool public withdrawn;
+    bool public active = true;           // <-- CORRECTED: Added the missing state variable
 
     mapping(address => uint256) public contributions;
 
@@ -36,6 +37,7 @@ contract Campaign is ReentrancyGuard {
         deadline = _deadline;
     }
 
+
     // 💰 Contribute ETH
     function contribute() external payable nonReentrant {
         require(block.timestamp < deadline, "Campaign ended");
@@ -55,6 +57,13 @@ contract Campaign is ReentrancyGuard {
         (bool sent, ) = payable(msg.sender).call{value: amount}("");
         require(sent, "Refund failed");
         emit Refunded(msg.sender, amount);
+    }
+    
+    // NEW FUNCTION: Cancel the campaign
+    function cancel() external onlyCreator {
+        require(active, "Campaign is already inactive");
+        require(totalContributed == 0, "Cannot cancel with contributions");
+        active = false;
     }
 
     // 🏆 Withdraw if goal reached
