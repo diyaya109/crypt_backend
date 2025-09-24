@@ -11,8 +11,8 @@ function AllCampaigns() {
         const fetchCampaigns = async () => {
             const allCampaigns = await getCampaigns();
             
-            // Corrected: Combine filtering into a single step
-            const activeCampaigns = allCampaigns.filter(c => c !== null && c.active);
+            // Corrected: Combine filtering into a single step
+            const activeCampaigns = allCampaigns.filter(c => c !== null && c.active);
 
             setCampaigns(activeCampaigns);
             setIsLoading(false);
