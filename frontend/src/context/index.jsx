@@ -1,8 +1,8 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { ethers } from "ethers";
 
-const contractAddress = "0x68c576761B3B3a7365d5f2912fb8dd2221c042b2";
-const SEPOLIA_RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/dnvuizKMmhQ4l1UKH5eSc";
+const contractAddress = "0x45adfec3F2309348DE005aB840f7A0db9c5BEe9A";
+const SEPOLIA_RPC_URL = "https://rpc.ankr.com/eth_sepolia";
 
 const factoryABI = [
   { "inputs": [ { "internalType": "string", "name": "metaURI", "type": "string" }, { "internalType": "uint256", "name": "goal", "type": "uint256" }, { "internalType": "uint256", "name": "deadline", "type": "uint256" } ], "name": "createCampaign", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "nonpayable", "type": "function" },
