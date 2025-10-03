@@ -20,8 +20,14 @@ function CreateCampaign() {
         try {
             if (!contract) throw new Error("Wallet not connected or contract not initialized");
 
-            // The 'metaURI' for the contract will be the image URL.
-            const metaURI = form.image; 
+            // Encode title, story, and image into a single JSON string for metaURI
+            const campaignData = {
+                title: form.title,
+                story: form.story,
+                image: form.image
+            };
+            const metaURI = JSON.stringify(campaignData);
+            
             const goalInWei = ethers.parseEther(form.goal);
             const deadlineInSeconds = Math.floor((new Date(form.deadline)).getTime() / 1000);
             

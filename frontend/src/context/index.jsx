@@ -58,18 +58,35 @@ export const StateContextProvider = ({ children }) => {
         try {
             const campaignContract = new ethers.Contract(campaignAddress, campaignABI, defaultProvider);
             const creator = await campaignContract.creator();
-            const metaURI = await campaignContract.metaURI(); // This is the image URL
+            const metaURI = await campaignContract.metaURI(); 
             const goal = await campaignContract.goal();
             const deadline = await campaignContract.deadline();
+
+            // Default values in case JSON parsing fails
+            let title = `Campaign: ${campaignAddress.substring(0, 10)}...`;
+            let story = "The full story for this campaign is available on the details page. Support this project to make it a reality!";
+            let image = metaURI; // Default to the entire string if it's just a URL
+            
+            // Attempt to parse metaURI as JSON to get title, story, and image
+            try {
+                const data = JSON.parse(metaURI);
+                title = data.title || title;
+                story = data.story || story;
+                image = data.image || image;
+            } catch (e) {
+                // If parsing fails, console warning and fall back to defaults
+                console.warn(`metaURI for ${campaignAddress} is not valid JSON. Assuming it's the image URL.`);
+            }
+
             const totalContributed = await campaignContract.totalContributed();
             const withdrawn = await campaignContract.withdrawn();
             
             return {
                 id: campaignAddress,
                 creator,
-                image: metaURI,
-                title: `Campaign: ${campaignAddress.substring(0, 10)}...`,
-                story: "The full story for this campaign is available on the details page. Support this project to make it a reality!",
+                image: image,
+                title: title, // Now uses the parsed title
+                story: story, // Now uses the parsed story
                 goal: ethers.formatEther(goal),
                 amountCollected: ethers.formatEther(totalContributed),
                 deadline: Number(deadline) * 1000,
@@ -79,7 +96,7 @@ export const StateContextProvider = ({ children }) => {
             console.error(`Error in getCampaignDetails for ${campaignAddress}:`, error); 
             return null; 
         }
-    }, []);
+    }, [defaultProvider]);
     
     const getCampaigns = useCallback(async () => {
         try {
@@ -91,7 +108,7 @@ export const StateContextProvider = ({ children }) => {
             console.error("Could not fetch campaigns:", error); 
             return []; 
         }
-    }, [getCampaignDetails]);
+    }, [getCampaignDetails, defaultProvider]);
     
     const getDonations = useCallback(async (userAddress) => {
       try {
@@ -118,7 +135,7 @@ export const StateContextProvider = ({ children }) => {
         console.error("Error in getDonations:", error);
         return [];
       }
-    }, [getCampaignDetails]);
+    }, [getCampaignDetails, defaultProvider]);
     
     const triggerRefresh = () => {
         setRefresh(prev => !prev);
@@ -183,4 +200,3 @@ export const ThemeProvider = ({ children }) => {
         </ThemeContext.Provider>
     );
 };
-
