@@ -3,25 +3,27 @@ import { Link } from 'react-router-dom';
 import { useStateContext } from '../context';
 
 const demoCampaigns = [
-  { id: 'demo-1', creator: '0xDEMO...dEaD', image: 'https://placehold.co/600x400/2563eb/ffffff?text=Project+Alpha', goal: '10', amountCollected: '7.5', deadline: new Date().getTime() + 1296000000, title: 'Demo Project: The Alpha Initiative', story: "This is a sample project to demonstrate how campaigns look. We're building the future of decentralized applications." },
-  { id: 'demo-2', creator: '0xDEMO...c0fe', image: 'https://placehold.co/600x400/1f2937/ffffff?text=Project+Beta', goal: '25', amountCollected: '5', deadline: new Date().getTime() + 2592000000, title: 'Demo Project: The Beta Launchpad', story: 'Support our beta launch! This demo shows a project that is just getting started on its funding journey.' },
-  { id: 'demo-3', creator: '0xDEMO...bEEf', image: 'https://placehold.co/600x400/2563eb/ffffff?text=Project+Gamma', goal: '5', amountCollected: '5', deadline: new Date().getTime() + 259200000, title: 'Demo Project: Gamma - Fully Funded!', story: 'This campaign is fully funded! This is an example of what a successful project looks like on our platform.' },
+  { id: 'demo-1', creator: '0xDEMO...dEaD', image: 'https://placehold.co/600x400/2563eb/ffffff?text=Project+Alpha', goal: '10', amountCollected: '7.5', deadline: new Date().getTime() + 1296000000, title: 'Demo Project: The Alpha Initiative', story: "This is a sample project to demonstrate how campaigns look. We're building the future of decentralized applications.", isActive: true },
+  { id: 'demo-2', creator: '0xDEMO...c0fe', image: 'https://placehold.co/600x400/1f2937/ffffff?text=Project+Beta', goal: '25', amountCollected: '5', deadline: new Date().getTime() + 2592000000, title: 'Demo Project: The Beta Launchpad', story: 'Support our beta launch! This demo shows a project that is just getting started on its funding journey.', isActive: true },
+  { id: 'demo-3', creator: '0xDEMO...bEEf', image: 'https://placehold.co/600x400/2563eb/ffffff?text=Project+Gamma', goal: '5', amountCollected: '5', deadline: new Date().getTime() - 86400000, title: 'Demo Project: Gamma - Ended', story: 'This campaign is ended. This is an example of what an inactive project looks like.', isActive: false },
 ];
 
 function AllCampaigns() {
     const [campaigns, setCampaigns] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    // NEW STATE: Filter is either 'active' or 'inactive'
+    const [filter, setFilter] = useState('active'); 
     const { getCampaigns, refresh } = useStateContext();
 
     useEffect(() => {
         const fetchCampaigns = async () => {
             setIsLoading(true);
+            // Fetch ALL campaigns, including inactive ones
             const allCampaigns = await getCampaigns();
-            const activeCampaigns = allCampaigns.filter(c => c !== null);
+            const validCampaigns = allCampaigns.filter(c => c !== null);
 
-            // If there are no real campaigns, show demo campaigns
-            if (activeCampaigns.length > 0) {
-                setCampaigns(activeCampaigns);
+            if (validCampaigns.length > 0) {
+                setCampaigns(validCampaigns);
             } else {
                 setCampaigns(demoCampaigns);
             }
@@ -30,6 +32,17 @@ function AllCampaigns() {
         fetchCampaigns();
     }, [refresh, getCampaigns]);
 
+    // NEW FILTER LOGIC: Apply the filter state to the campaign list
+    const filteredCampaigns = campaigns.filter(campaign => {
+        if (filter === 'active') {
+            // Filter to show only active campaigns
+            return campaign.isActive;
+        } else {
+            // Filter to show only inactive/ended campaigns
+            return !campaign.isActive;
+        }
+    });
+
     return (
         <div className="relative container mx-auto p-8 text-gray-800 dark:text-gray-200">
             <div className="text-center pt-16 h-[50vh] flex flex-col justify-center items-center">
@@ -37,13 +50,40 @@ function AllCampaigns() {
                 <p className="text-lg max-w-2xl mx-auto animate-fade-in-down text-gray-300" style={{animationDelay: '200ms'}}>Support groundbreaking projects on a transparent, secure, and community-driven crowdfunding platform.</p>
             </div>
             
-            <h2 className="text-3xl font-bold mb-8 border-b-2 border-blue-200 dark:border-blue-700 pb-2 text-white">Active Campaigns</h2>
+            <div className="flex justify-between items-center mb-8 border-b-2 border-blue-200 dark:border-blue-700 pb-2">
+                <h2 className="text-3xl font-bold text-white">
+                    {filter === 'active' ? 'Active Campaigns' : 'Inactive Campaigns'}
+                </h2>
+                {/* NEW FILTER UI */}
+                <div className="flex space-x-4 p-1 bg-gray-700 rounded-lg">
+                    <button
+                        onClick={() => setFilter('active')}
+                        className={`px-4 py-2 text-sm font-semibold rounded-md transition ${
+                            filter === 'active' 
+                                ? 'bg-blue-600 text-white' 
+                                : 'text-gray-300 hover:bg-gray-600'
+                        }`}
+                    >
+                        Active
+                    </button>
+                    <button
+                        onClick={() => setFilter('inactive')}
+                        className={`px-4 py-2 text-sm font-semibold rounded-md transition ${
+                            filter === 'inactive' 
+                                ? 'bg-blue-600 text-white' 
+                                : 'text-gray-300 hover:bg-gray-600'
+                        }`}
+                    >
+                        Ended
+                    </button>
+                </div>
+            </div>
             
             {isLoading && <p className="text-center text-white">Loading campaigns from the blockchain...</p>}
             
-            {!isLoading && campaigns.length > 0 && (
+            {!isLoading && filteredCampaigns.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {campaigns.map((campaign, i) => {
+                    {filteredCampaigns.map((campaign, i) => {
                         const progress = campaign.goal > 0 ? (parseFloat(campaign.amountCollected) / parseFloat(campaign.goal)) * 100 : 0;
                         return (
                             <div key={campaign.id} className="bg-gray-900/50 backdrop-blur-md border border-gray-700 rounded-2xl shadow-xl overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 animate-fade-in-up" style={{animationDelay: `${i * 100}ms`}}>
@@ -63,12 +103,14 @@ function AllCampaigns() {
                 </div>
             )}
 
-            {!isLoading && campaigns.length === 0 && (
+            {!isLoading && filteredCampaigns.length === 0 && (
                 <div className="text-center py-12 text-white">
-                    <p>No active campaigns found on the network.</p>
-                    <Link to="/create" className="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition">
-                        Be the first to create one!
-                    </Link>
+                    <p>No {filter} campaigns found.</p>
+                    {filter === 'active' && (
+                        <Link to="/create" className="mt-4 inline-block bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition">
+                            Be the first to create one!
+                        </Link>
+                    )}
                 </div>
             )}
         </div>

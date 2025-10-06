@@ -80,6 +80,12 @@ export const StateContextProvider = ({ children }) => {
 
             const totalContributed = await campaignContract.totalContributed();
             const withdrawn = await campaignContract.withdrawn();
+
+            // NEW LOGIC FOR FILTERING: Calculate campaign active status
+            const deadlineInMs = Number(deadline) * 1000;
+            const deadlinePassed = new Date().getTime() >= deadlineInMs;
+            // Campaign is active if the deadline hasn't passed AND funds haven't been withdrawn
+            const isActive = !deadlinePassed && !withdrawn; 
             
             return {
                 id: campaignAddress,
@@ -89,8 +95,9 @@ export const StateContextProvider = ({ children }) => {
                 story: story, // Now uses the parsed story
                 goal: ethers.formatEther(goal),
                 amountCollected: ethers.formatEther(totalContributed),
-                deadline: Number(deadline) * 1000,
+                deadline: deadlineInMs,
                 withdrawn,
+                isActive, // <-- ADDED STATUS FLAG
             };
         } catch (error) { 
             console.error(`Error in getCampaignDetails for ${campaignAddress}:`, error); 
@@ -103,6 +110,7 @@ export const StateContextProvider = ({ children }) => {
             const factoryContract = new ethers.Contract(contractAddress, factoryABI, defaultProvider);
             const campaignAddresses = await factoryContract.allCampaigns();
             const campaignPromises = campaignAddresses.map(address => getCampaignDetails(address));
+            // This function now returns ALL campaigns (active and inactive)
             return Promise.all(campaignPromises);
         } catch(error) { 
             console.error("Could not fetch campaigns:", error); 

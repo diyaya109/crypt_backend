@@ -31,6 +31,12 @@ function Navbar() {
           >
             Create Campaign
           </Link>
+          <Link
+            to="/contact" // <--- ADDED LINK
+            className="hidden sm:block hover:text-blue-400 transition font-medium"
+          >
+            Help/Contact
+          </Link>
           {walletAddress && (
             <Link
               to="/profile"
@@ -52,4 +58,3 @@ function Navbar() {
 }
 
 export default Navbar;
-

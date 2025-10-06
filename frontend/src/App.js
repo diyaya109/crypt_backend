@@ -8,6 +8,7 @@ import AllCampaigns from './pages/AllCampaigns';
 import CreateCampaign from './pages/CreateCampaign';
 import CampaignDetail from './pages/CampaignDetails';
 import Profile from './pages/Profile';
+import Contact from './pages/Contact'; // <--- NEW IMPORT
 
 const Footer = () => (
     <footer className="bg-gray-900/50 backdrop-blur-sm text-white mt-12 py-8">
@@ -33,6 +34,7 @@ function App() {
                                 <Route path="/create" element={<CreateCampaign />} />
                                 <Route path="/campaign/:address" element={<CampaignDetail />} />
                                 <Route path="/profile" element={<Profile />} />
+                                <Route path="/contact" element={<Contact />} /> {/* <--- NEW ROUTE */}
                             </Routes>
                         </main>
                         <Footer />
@@ -44,4 +46,3 @@ function App() {
 }
 
 export default App;
-
