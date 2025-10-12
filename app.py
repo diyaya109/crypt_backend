@@ -3,12 +3,15 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_mail import Mail, Message
+from dotenv import load_dotenv # <-- NEW IMPORT
+from flask import Flask, request, jsonify
 import os
 import sys
 
 # ================================================================
 # 1. INITIALIZE APP
 # ================================================================
+load_dotenv()
 app = Flask(__name__)
 
 # Allows requests from your React frontend (typically on localhost:3000)

@@ -65,7 +65,7 @@ export const StateContextProvider = ({ children }) => {
             // Default values in case JSON parsing fails
             let title = `Campaign: ${campaignAddress.substring(0, 10)}...`;
             let story = "The full story for this campaign is available on the details page. Support this project to make it a reality!";
-            let image = metaURI; // Default to the entire string if it's just a URL
+            let image = metaURI; 
             
             // Attempt to parse metaURI as JSON to get title, story, and image
             try {
@@ -91,13 +91,13 @@ export const StateContextProvider = ({ children }) => {
                 id: campaignAddress,
                 creator,
                 image: image,
-                title: title, // Now uses the parsed title
-                story: story, // Now uses the parsed story
+                title: title, 
+                story: story, 
                 goal: ethers.formatEther(goal),
                 amountCollected: ethers.formatEther(totalContributed),
                 deadline: deadlineInMs,
                 withdrawn,
-                isActive, // <-- ADDED STATUS FLAG
+                isActive, 
             };
         } catch (error) { 
             console.error(`Error in getCampaignDetails for ${campaignAddress}:`, error); 
