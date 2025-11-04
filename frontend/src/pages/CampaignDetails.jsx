@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { ethers } from "ethers";
-import { useStateContext } from '../context';
+import { useStateContext, useToast } from '../context';
 import campaignABIJson from '../utils/campaignABI.json';
 const campaignABI = campaignABIJson.abi;
 
@@ -12,8 +12,9 @@ const campaignABI = campaignABIJson.abi;
 const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const EthIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-9l3-3 3 3m-6 6l3 3 3-3" /></svg>;
 const WithdrawIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.103c.72.186 1.345-.355 1.345-1.071v-3.674c0-.555-.345-1.054-.862-1.229a10.023 10.023 0 00-6.195-4.148c-.553-.191-1.127-.291-1.7-.308m-.831 2.545a2.225 2.225 0 01-1.656-2.222v-1.332a.831.831 0 00-.781-.826h-2.115a.831.831 0 00-.78.826v1.332c0 .991.802 1.83 1.777 2.054a10.02 10.02 0 005.516 2.378" /></svg>;
-// NEW ICON
 const RefundIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>;
+const ProofIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
 
 const StatBox = ({ icon, title, value }) => (
     <div className="flex items-center space-x-3">
@@ -28,14 +29,21 @@ const StatBox = ({ icon, title, value }) => (
 function CampaignDetail() {
     const { address } = useParams();
     const { provider, getCampaignDetails, refresh, walletAddress, triggerRefresh } = useStateContext();
+    const { showToast } = useToast();
+    
     const [campaign, setCampaign] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [amount, setAmount] = useState('');
     const [isDonating, setIsDonating] = useState(false);
     const [isWithdrawing, setIsWithdrawing] = useState(false);
-    // NEW STATE
     const [isRefunding, setIsRefunding] = useState(false);
     const [userContribution, setUserContribution] = useState(ethers.getBigInt(0));
+    
+    // States for proof submission
+    const [proofURL, setProofURL] = useState(''); 
+    const [isSubmittingProof, setIsSubmittingProof] = useState(false); 
+    const [fileToUpload, setFileToUpload] = useState(null);
+    const [isUploading, setIsUploading] = useState(false);
 
     const donate = async () => {
         if (!walletAddress) return alert('Please connect your wallet to donate.');
@@ -87,7 +95,6 @@ function CampaignDetail() {
         }
     };
 
-    // NEW FUNCTION
     const handleRefund = async () => {
         if (!walletAddress) {
             alert("Please connect your wallet first.");
@@ -104,10 +111,73 @@ function CampaignDetail() {
             triggerRefresh();
         } catch (error) {
             console.error("Refund failed:", error);
-            // Check for specific error message if possible, otherwise use generic message
             alert(`Refund failed: ${error.reason || error.message}`);
         } finally {
             setIsRefunding(false);
+        }
+    };
+    
+    // UPDATED FUNCTION: Converts file to a Base64 Data URI (a self-contained link)
+    const handleFileUpload = async (e) => {
+        e.preventDefault();
+        if (!fileToUpload) return showToast('error', 'Please select a file to upload.');
+        
+        setIsUploading(true);
+        showToast('info', `Processing ${fileToUpload.name}... (No external services needed)`);
+
+        try {
+            // Check if the file is too large for the Base64 method (e.g., > 1MB)
+            if (fileToUpload.size > 1024 * 1024) { 
+                throw new Error("File too large. Max size 1MB for direct Base64 encoding. Please use a cloud service instead.");
+            }
+            
+            // Read the file as a Data URL (Base64 encoded string)
+            const reader = new FileReader();
+            
+            // Return a promise so we can use await/async syntax
+            const dataUrl = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = (error) => reject(error);
+                reader.readAsDataURL(fileToUpload);
+            });
+            
+            setProofURL(dataUrl); // Set the Data URI as the link
+            showToast('success', 'File processed! Ready to submit link to blockchain.');
+
+        } catch (error) {
+            console.error("File processing failed:", error);
+            showToast('error', `File processing failed: ${error.message}`);
+            setProofURL('');
+        } finally {
+            setIsUploading(false);
+            setFileToUpload(null); 
+        }
+    };
+    
+    // UPDATED FUNCTION: Submit Proof of Use (now triggered by the form and uses proofURL state)
+    const handleSubmitProofOfUse = async (e) => {
+        e.preventDefault();
+        
+        if (!walletAddress) return showToast('error', 'Please connect your wallet first.');
+        if (campaign.creator.toLowerCase() !== walletAddress.toLowerCase()) return showToast('error', "Only the campaign creator can submit proof.");
+        if (!campaign.withdrawn) return showToast('error', "Funds must be withdrawn before submitting proof.");
+        if (!proofURL.trim()) return showToast('error', "Please upload a file or paste a valid proof URL.");
+
+        setIsSubmittingProof(true);
+        try {
+            const signer = await provider.getSigner();
+            const campaignContract = new ethers.Contract(address, campaignABI, signer);
+            // Use the URL saved in state
+            const tx = await campaignContract.submitProofOfUse(proofURL); 
+            await tx.wait();
+            showToast('success', "Proof of Use submitted successfully!");
+            setProofURL(''); // Clear URL field for the next submission
+            triggerRefresh();
+        } catch (error) {
+            console.error("Proof submission failed:", error);
+            showToast('error', `Proof submission failed: ${error.reason || error.message}`);
+        } finally {
+            setIsSubmittingProof(false);
         }
     };
 
@@ -115,7 +185,6 @@ function CampaignDetail() {
         setIsLoading(true);
         const data = await getCampaignDetails(address);
         
-        // NEW LOGIC: Fetch user contribution if wallet is connected
         if(data && walletAddress) {
              try {
                 // Using the hardcoded RPC URL from src/context/index.jsx
@@ -145,27 +214,89 @@ function CampaignDetail() {
     
     const deadlinePassed = new Date().getTime() >= campaign.deadline;
     const goalMet = parseFloat(campaign.amountCollected) >= parseFloat(campaign.goal);
+    
+    // User role checks
+    const isCreator = walletAddress && campaign.creator.toLowerCase() === walletAddress.toLowerCase();
 
+    // Logic for creator's proof submission
+    const canSubmitProof = 
+        isCreator &&
+        campaign.withdrawn; 
+        
     // Existing Withdrawal Logic (for creator)
     const canWithdraw = 
-        walletAddress &&
-        campaign.creator.toLowerCase() === walletAddress.toLowerCase() &&
+        isCreator &&
         deadlinePassed &&
         goalMet &&
         !campaign.withdrawn;
         
-    // NEW Refund Logic (for contributors)
+    // Existing Refund Logic (for contributors)
     const hasContributed = userContribution > ethers.getBigInt(0);
     const canRefund =
         walletAddress &&
         deadlinePassed &&
         !goalMet &&
         hasContributed;
+        
+    // NEW LOGIC: Check if the creator has any pending actions left (withdraw or proof submission)
+    const creatorHasPendingAction = canWithdraw || canSubmitProof;
 
     // Determine what action button to show
     let actionButton = null;
 
-    if (canWithdraw) {
+    if (canSubmitProof) { 
+        actionButton = (
+            <form onSubmit={handleSubmitProofOfUse} className="mt-4 p-4 border border-blue-600 rounded-xl bg-gray-800 space-y-3">
+                <h3 className="text-xl font-semibold text-white">Submit Proof of Use (Creator Only)</h3>
+                
+                <label className="block text-sm font-medium text-gray-300">1. Select Document/Image:</label>
+                <input 
+                    type="file" 
+                    onChange={(e) => {
+                        setFileToUpload(e.target.files[0]);
+                        setProofURL(''); // Clear URL when a new file is selected
+                    }} 
+                    // Styled for better visibility in the dark theme
+                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer"
+                />
+                
+                {fileToUpload && (
+                    <button
+                        onClick={handleFileUpload}
+                        disabled={isUploading}
+                        className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition font-semibold disabled:opacity-60"
+                    >
+                        {isUploading ? "Processing File..." : `Process "${fileToUpload.name}"`}
+                    </button>
+                )}
+
+                <label className="block text-sm font-medium text-gray-300">2. Submit Link to Blockchain:</label>
+                <input 
+                    type="url" 
+                    placeholder="Link (Auto-Populated after processing)" 
+                    value={proofURL} 
+                    onChange={(e) => setProofURL(e.target.value)} 
+                    className="bg-gray-700 border border-gray-600 text-white p-3 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    required
+                    readOnly={proofURL.length > 0 && !fileToUpload} // Make read-only if URL is set and no new file selected
+                />
+                {proofURL.startsWith('data:') && (
+                    <p className="text-xs text-yellow-400">Note: File is encoded directly as a small Data URI in the field above.</p>
+                )}
+
+                <button
+                    type="submit"
+                    disabled={isSubmittingProof || isUploading || proofURL.length === 0}
+                    className="bg-blue-600 text-white px-6 py-3 w-full rounded-lg hover:bg-blue-700 transition font-semibold text-lg disabled:opacity-60 transform hover:scale-105"
+                >
+                    <div className="flex items-center justify-center space-x-2">
+                        <ProofIcon/>
+                        <span>{isSubmittingProof ? "Submitting Link..." : "Submit Proof Link"}</span>
+                    </div>
+                </button>
+            </form>
+        );
+    } else if (canWithdraw) {
         actionButton = (
             <button
                 onClick={handleWithdraw}
@@ -191,7 +322,15 @@ function CampaignDetail() {
                 </div>
             </button>
         );
+    } else if (isCreator && deadlinePassed && !creatorHasPendingAction) {
+        // Hide the action box for the creator when the campaign is over and they have no tasks left.
+         actionButton = (
+            <div className="mt-4 p-4 text-center bg-gray-800 rounded-xl border border-gray-700">
+                <p className="text-gray-400">Campaign management concluded.</p>
+            </div>
+        );
     } else {
+        // Default: show donation form to everyone who isn't the creator in a concluded state
         actionButton = (
             <>
                 <h3 className="text-xl font-semibold mb-4 text-white">Fund this Campaign</h3>
@@ -201,6 +340,51 @@ function CampaignDetail() {
                 </button>
             </>
         );
+    }
+    
+    // UPDATED: Proof of Use Display Component to handle array
+    const ProofOfUseSection = () => {
+        // Check if proofOfUseURIs is an array and has items
+        if (campaign.proofOfUseURIs && Array.isArray(campaign.proofOfUseURIs) && campaign.proofOfUseURIs.length > 0) {
+            return (
+                <div className="mt-12 p-8 bg-gray-900/50 backdrop-blur-md border border-green-700 rounded-2xl shadow-xl">
+                    <h2 className="text-3xl font-bold mb-4 text-white flex items-center space-x-2">
+                        <ProofIcon/><span>Proof of Use Submitted ({campaign.proofOfUseURIs.length})</span>
+                    </h2>
+                    <p className="leading-relaxed mb-4 text-gray-300">
+                        The campaign creator has submitted the following proof documents showing how the funds were used.
+                    </p>
+                    <div className="space-y-3">
+                        {campaign.proofOfUseURIs.map((uri, index) => (
+                             <a 
+                                key={index}
+                                href={uri} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="block w-full text-center bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition font-semibold"
+                            >
+                                View Proof Document #{index + 1}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+        
+        if (campaign.withdrawn) {
+            return (
+                <div className="mt-12 p-8 bg-gray-900/50 backdrop-blur-md border border-gray-700 rounded-2xl shadow-xl">
+                    <h2 className="text-3xl font-bold mb-4 text-white flex items-center space-x-2">
+                        <ProofIcon/><span>Proof of Use (Pending)</span>
+                    </h2>
+                    <p className="leading-relaxed text-gray-400">
+                        Funds have been successfully withdrawn by the creator, but proof of use has not yet been submitted for transparency.
+                    </p>
+                </div>
+            );
+        }
+        
+        return null;
     }
 
 
@@ -214,6 +398,10 @@ function CampaignDetail() {
                     <p className="text-sm text-gray-400 break-all mb-8">{campaign.creator}</p>
                     <h2 className="text-2xl font-bold mb-4 text-white">Story</h2>
                     <p className="leading-relaxed mb-8 text-gray-300">{campaign.story}</p>
+                    
+                    {/* NEW: Proof of Use Section */}
+                    <ProofOfUseSection />
+                    
                 </div>
                 <div className="lg:col-span-1">
                     <div className="bg-gray-900/50 backdrop-blur-md border border-gray-700 p-6 rounded-2xl shadow-xl sticky top-28">

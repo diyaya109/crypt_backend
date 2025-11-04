@@ -11,17 +11,22 @@ Factory  = vending machine that makes many campaigns
 contract Campaign is ReentrancyGuard {
     address public creator;
     string public metaURI;               // IPFS metadata (title/desc/image)
-    uint256 public goal;                 // fundraising goal (in wei)
+    uint256 public goal;
     uint256 public deadline;             // unix timestamp
     uint256 public totalContributed;
     bool public withdrawn;
-    bool public active = true;           // <-- CORRECTED: Added the missing state variable
+    bool public active = true;
+    
+    // CHANGED: From single string to dynamic array
+    string[] public proofOfUseURIs; // NEW STATE VARIABLE: Stores an array of links
 
     mapping(address => uint256) public contributions;
 
     event Contributed(address indexed from, uint256 amount);
     event Refunded(address indexed to, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount);
+    // CHANGED: New event signature
+    event ProofSubmitted(uint256 index, string proofURI);
 
     modifier onlyCreator() {
         require(msg.sender == creator, "Not creator");
@@ -77,13 +82,25 @@ contract Campaign is ReentrancyGuard {
         require(sent, "Withdraw failed");
         emit Withdrawn(creator, bal);
     }
+    
+    // 🧾 UPDATED FUNCTION: Submit proof of use (Allows multiple submissions)
+    function submitProofOfUse(string memory _proofURI) external onlyCreator {
+        require(withdrawn, "Funds must be withdrawn first");
+        // REMOVED: require(bytes(proofOfUseURI).length == 0, "Proof already submitted");
+        proofOfUseURIs.push(_proofURI);
+        emit ProofSubmitted(proofOfUseURIs.length - 1, _proofURI);
+    }
+    
+    // NEW VIEW FUNCTION to get the count of submitted proofs (for efficient reading on frontend)
+    function proofCount() external view returns (uint256) {
+        return proofOfUseURIs.length;
+    }
 }
 
 contract CampaignFactory {
     address[] public campaigns;
 
     event CampaignCreated(address indexed creator, address campaign, string metaURI, uint256 goal, uint256 deadline);
-
     function createCampaign(string memory metaURI, uint256 goal, uint256 deadline) external returns (address) {
         Campaign c = new Campaign(msg.sender, metaURI, goal, deadline);
         campaigns.push(address(c));

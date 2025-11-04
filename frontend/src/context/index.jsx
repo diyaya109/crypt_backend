@@ -1,10 +1,12 @@
+// src/context/index.jsx
+
 import React, { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { ethers } from "ethers";
 
 // ================================================================
 // CONTRACT DETAILS
 // ================================================================
-const contractAddress = "0x45adfec3F2309348DE005aB840f7A0db9c5BEe9A";
+const contractAddress = "0xa0e063070209953e96d8796FAF04e1BE3C08a907";
 // FIX: Switched to a public RPC URL that does not require an API key.
 const SEPOLIA_RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/dnvuizKMmhQ4l1UKH5eSc";
 
@@ -23,7 +25,11 @@ const campaignABI = [
   { "inputs": [], "name": "totalContributed", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
   { "inputs": [], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
   { "inputs": [], "name": "withdrawn", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "", "type": "address" } ], "name": "contributions", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" }
+  { "inputs": [ { "internalType": "address", "name": "", "type": "address" } ], "name": "contributions", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+  // UPDATED ABI ENTRIES: proofOfUseURI (string) -> proofOfUseURIs (string[]) and proofCount()
+  { "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "name": "proofOfUseURIs", "outputs": [ { "internalType": "string", "name": "", "type": "string" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "proofCount", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+  { "inputs": [ { "internalType": "string", "name": "_proofURI", "type": "string" } ], "name": "submitProofOfUse", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
 ];
 
 // ================================================================
@@ -61,6 +67,14 @@ export const StateContextProvider = ({ children }) => {
             const metaURI = await campaignContract.metaURI(); 
             const goal = await campaignContract.goal();
             const deadline = await campaignContract.deadline();
+            
+            // NEW LOGIC: Fetch proof URIs (multiple)
+            const proofCount = await campaignContract.proofCount();
+            const proofOfUseURIs = [];
+            for (let i = 0; i < proofCount; i++) {
+                const uri = await campaignContract.proofOfUseURIs(i);
+                proofOfUseURIs.push(uri);
+            }
 
             // Default values in case JSON parsing fails
             let title = `Campaign: ${campaignAddress.substring(0, 10)}...`;
@@ -98,6 +112,7 @@ export const StateContextProvider = ({ children }) => {
                 deadline: deadlineInMs,
                 withdrawn,
                 isActive, 
+                proofOfUseURIs, // NEW RETURN VALUE (array)
             };
         } catch (error) { 
             console.error(`Error in getCampaignDetails for ${campaignAddress}:`, error); 
