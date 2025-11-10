@@ -6,7 +6,7 @@ import { ethers } from "ethers";
 // ================================================================
 // CONTRACT DETAILS
 // ================================================================
-const contractAddress = "0xa0e063070209953e96d8796FAF04e1BE3C08a907";
+const contractAddress = "0xc16bD9d6C609C14CbEF1694cC3a64a3E7EE83aBf";
 // FIX: Switched to a public RPC URL that does not require an API key.
 const SEPOLIA_RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/dnvuizKMmhQ4l1UKH5eSc";
 

@@ -154,13 +154,12 @@ function CampaignDetail() {
         }
     };
     
-    // UPDATED FUNCTION: Submit Proof of Use (now triggered by the form and uses proofURL state)
+    // UPDATED FUNCTION: Submit Proof of Use 
     const handleSubmitProofOfUse = async (e) => {
         e.preventDefault();
         
         if (!walletAddress) return showToast('error', 'Please connect your wallet first.');
         if (campaign.creator.toLowerCase() !== walletAddress.toLowerCase()) return showToast('error', "Only the campaign creator can submit proof.");
-        if (!campaign.withdrawn) return showToast('error', "Funds must be withdrawn before submitting proof.");
         if (!proofURL.trim()) return showToast('error', "Please upload a file or paste a valid proof URL.");
 
         setIsSubmittingProof(true);
@@ -218,10 +217,8 @@ function CampaignDetail() {
     // User role checks
     const isCreator = walletAddress && campaign.creator.toLowerCase() === walletAddress.toLowerCase();
 
-    // Logic for creator's proof submission
-    const canSubmitProof = 
-        isCreator &&
-        campaign.withdrawn; 
+    // UPDATED LOGIC: Proof of Use is available anytime for the creator.
+    const canSubmitProof = isCreator; 
         
     // Existing Withdrawal Logic (for creator)
     const canWithdraw = 
@@ -238,7 +235,7 @@ function CampaignDetail() {
         !goalMet &&
         hasContributed;
         
-    // NEW LOGIC: Check if the creator has any pending actions left (withdraw or proof submission)
+    // Check if the creator has any pending actions left (withdraw or proof submission)
     const creatorHasPendingAction = canWithdraw || canSubmitProof;
 
     // Determine what action button to show
@@ -249,7 +246,7 @@ function CampaignDetail() {
             <form onSubmit={handleSubmitProofOfUse} className="mt-4 p-4 border border-blue-600 rounded-xl bg-gray-800 space-y-3">
                 <h3 className="text-xl font-semibold text-white">Submit Proof of Use (Creator Only)</h3>
                 
-                <label className="block text-sm font-medium text-gray-300">1. Select Document/Image:</label>
+                <label className="block text-sm font-medium text-gray-300">1. Select Document/Image (Max 1MB):</label>
                 <input 
                     type="file" 
                     onChange={(e) => {
@@ -352,7 +349,7 @@ function CampaignDetail() {
                         <ProofIcon/><span>Proof of Use Submitted ({campaign.proofOfUseURIs.length})</span>
                     </h2>
                     <p className="leading-relaxed mb-4 text-gray-300">
-                        The campaign creator has submitted the following proof documents showing how the funds were used.
+                        The campaign creator has submitted the following proof documents showing how the funds were or will be used.
                     </p>
                     <div className="space-y-3">
                         {campaign.proofOfUseURIs.map((uri, index) => (
@@ -371,19 +368,7 @@ function CampaignDetail() {
             );
         }
         
-        if (campaign.withdrawn) {
-            return (
-                <div className="mt-12 p-8 bg-gray-900/50 backdrop-blur-md border border-gray-700 rounded-2xl shadow-xl">
-                    <h2 className="text-3xl font-bold mb-4 text-white flex items-center space-x-2">
-                        <ProofIcon/><span>Proof of Use (Pending)</span>
-                    </h2>
-                    <p className="leading-relaxed text-gray-400">
-                        Funds have been successfully withdrawn by the creator, but proof of use has not yet been submitted for transparency.
-                    </p>
-                </div>
-            );
-        }
-        
+        // No pending state is needed, as the form is always visible to the creator.
         return null;
     }
 

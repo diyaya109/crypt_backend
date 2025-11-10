@@ -4,7 +4,7 @@ import campaignArtifact from "../artifacts/contracts/crowdfunding.sol/Campaign.j
 
 // It's a good practice to put the address in an .env file
 // but for a dev environment, you can hardcode it to test
-const FACTORY_ADDRESS = "0xa0e063070209953e96d8796FAF04e1BE3C08a907"; // Replace with your actual deployed address
+const FACTORY_ADDRESS = "0xc16bD9d6C609C14CbEF1694cC3a64a3E7EE83aBf"; // Replace with your actual deployed address
 
 export function getFactory(providerOrSigner) {
   if (!FACTORY_ADDRESS) {

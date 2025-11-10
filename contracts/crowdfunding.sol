@@ -17,7 +17,6 @@ contract Campaign is ReentrancyGuard {
     bool public withdrawn;
     bool public active = true;
     
-    // CHANGED: From single string to dynamic array
     string[] public proofOfUseURIs; // NEW STATE VARIABLE: Stores an array of links
 
     mapping(address => uint256) public contributions;
@@ -83,10 +82,9 @@ contract Campaign is ReentrancyGuard {
         emit Withdrawn(creator, bal);
     }
     
-    // 🧾 UPDATED FUNCTION: Submit proof of use (Allows multiple submissions)
+    // 🧾 UPDATED FUNCTION: Requirement on 'withdrawn' state removed.
     function submitProofOfUse(string memory _proofURI) external onlyCreator {
-        require(withdrawn, "Funds must be withdrawn first");
-        // REMOVED: require(bytes(proofOfUseURI).length == 0, "Proof already submitted");
+        // REQUIREMENT REMOVED: require(withdrawn, "Funds must be withdrawn first");
         proofOfUseURIs.push(_proofURI);
         emit ProofSubmitted(proofOfUseURIs.length - 1, _proofURI);
     }
