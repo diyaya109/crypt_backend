@@ -219,20 +219,30 @@ function CampaignDetail() {
 
     // UPDATED LOGIC: Proof of Use is available anytime for the creator.
     const canSubmitProof = isCreator; 
+
+    // NEW CONSTANTS FOR LOGIC
+    const proofCount = campaign.proofOfUseURIs?.length || 0;
+    const hasProof = proofCount > 0;
+    
+    // MODIFIED: Use 1 day for refund window
+    const ONE_DAY_IN_MS = 1 * 24 * 60 * 60 * 1000;
+    const oneDayPassedSinceDeadline = new Date().getTime() >= (campaign.deadline + ONE_DAY_IN_MS);
         
-    // Existing Withdrawal Logic (for creator)
+    // Withdrawal Logic (for creator)
     const canWithdraw = 
         isCreator &&
         deadlinePassed &&
         goalMet &&
+        hasProof && // Must have at least one proof
         !campaign.withdrawn;
         
-    // Existing Refund Logic (for contributors)
+    // UPDATED Refund Logic (for contributors)
     const hasContributed = userContribution > ethers.getBigInt(0);
     const canRefund =
         walletAddress &&
-        deadlinePassed &&
+        oneDayPassedSinceDeadline && // MODIFIED: 1 day must have passed
         !goalMet &&
+        (proofCount === 0) && // No proof submitted
         hasContributed;
         
     // Check if the creator has any pending actions left (withdraw or proof submission)
@@ -293,19 +303,40 @@ function CampaignDetail() {
                 </button>
             </form>
         );
-    } else if (canWithdraw) {
-        actionButton = (
-            <button
-                onClick={handleWithdraw}
-                disabled={isWithdrawing}
-                className="mt-4 bg-green-600 text-white px-6 py-3 w-full rounded-lg hover:bg-green-700 transition font-semibold text-lg disabled:opacity-60 transform hover:scale-105"
-            >
-                <div className="flex items-center justify-center space-x-2">
-                    <WithdrawIcon/>
-                    <span>{isWithdrawing ? "Withdrawing..." : "Withdraw Funds"}</span>
+    } else if (isCreator) {
+        // Creator's Action: Withdraw, or status message
+        if (canWithdraw) {
+            actionButton = (
+                <button
+                    onClick={handleWithdraw}
+                    disabled={isWithdrawing}
+                    className="mt-4 bg-green-600 text-white px-6 py-3 w-full rounded-lg hover:bg-green-700 transition font-semibold text-lg disabled:opacity-60 transform hover:scale-105"
+                >
+                    <div className="flex items-center justify-center space-x-2">
+                        <WithdrawIcon/>
+                        <span>{isWithdrawing ? "Withdrawing..." : "Withdraw Funds"}</span>
+                    </div>
+                </button>
+            );
+        } else if (deadlinePassed && goalMet && !hasProof) {
+             actionButton = (
+                <div className="mt-4 p-4 text-center bg-yellow-900 rounded-xl border border-yellow-700">
+                    <p className="text-yellow-300 font-semibold">Funds ready, but must submit proof of use before withdrawing.</p>
                 </div>
-            </button>
-        );
+            );
+        } else if (deadlinePassed && !goalMet) {
+             actionButton = (
+                <div className="mt-4 p-4 text-center bg-red-900 rounded-xl border border-red-700">
+                    <p className="text-red-300 font-semibold">Goal not met. Contributors can request a refund after the 1-day waiting period, provided no proof is submitted.</p>
+                </div>
+            );
+        } else if (deadlinePassed && !creatorHasPendingAction) {
+             actionButton = (
+                <div className="mt-4 p-4 text-center bg-gray-800 rounded-xl border border-gray-700">
+                    <p className="text-gray-400">Campaign management concluded.</p>
+                </div>
+            );
+        }
     } else if (canRefund) {
         actionButton = (
             <button
@@ -319,15 +350,37 @@ function CampaignDetail() {
                 </div>
             </button>
         );
-    } else if (isCreator && deadlinePassed && !creatorHasPendingAction) {
-        // Hide the action box for the creator when the campaign is over and they have no tasks left.
-         actionButton = (
-            <div className="mt-4 p-4 text-center bg-gray-800 rounded-xl border border-gray-700">
-                <p className="text-gray-400">Campaign management concluded.</p>
-            </div>
-        );
-    } else {
-        // Default: show donation form to everyone who isn't the creator in a concluded state
+    } else if (hasContributed && deadlinePassed && !goalMet) {
+        // Contributor refund status messages
+        let refundMessage = "Goal not met. ";
+        
+        // MODIFIED: Refund time check and messaging
+        if (!oneDayPassedSinceDeadline) {
+             // Calculate remaining time in hours or days
+             const timeRemaining = campaign.deadline + ONE_DAY_IN_MS - new Date().getTime(); 
+             const hoursRemaining = Math.ceil(timeRemaining / (1000 * 60 * 60));
+
+             if (hoursRemaining > 24) {
+                 const daysRemaining = Math.ceil(hoursRemaining / 24);
+                 refundMessage += `Refunds are available in approximately ${daysRemaining} day(s).`;
+             } else {
+                 refundMessage += `Refunds are available in approximately ${hoursRemaining} hour(s).`;
+             }
+        } else if (proofCount > 0) {
+            refundMessage += "Refund is unavailable because the creator has submitted proof of use.";
+        }
+        
+        if (refundMessage !== "Goal not met. ") {
+             actionButton = (
+                <div className="mt-4 p-4 text-center bg-yellow-900 rounded-xl border border-yellow-700">
+                    <p className="text-yellow-300 font-semibold">{refundMessage}</p>
+                </div>
+            );
+        }
+    }
+    
+    // Default action (Donation Form) if no other button/message is shown
+    if (!actionButton || (!isCreator && daysLeft > 0)) {
         actionButton = (
             <>
                 <h3 className="text-xl font-semibold mb-4 text-white">Fund this Campaign</h3>

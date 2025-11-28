@@ -12,21 +12,22 @@ contract Campaign is ReentrancyGuard {
     address public creator;
     string public metaURI;               // IPFS metadata (title/desc/image)
     uint256 public goal;
-    uint256 public deadline;             // unix timestamp
+    uint256 public deadline;
+    // unix timestamp
     uint256 public totalContributed;
     bool public withdrawn;
     bool public active = true;
     
-    string[] public proofOfUseURIs; // NEW STATE VARIABLE: Stores an array of links
+    string[] public proofOfUseURIs;
+    // NEW STATE VARIABLE: Stores an array of links
 
     mapping(address => uint256) public contributions;
-
     event Contributed(address indexed from, uint256 amount);
     event Refunded(address indexed to, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount);
     // CHANGED: New event signature
     event ProofSubmitted(uint256 index, string proofURI);
-
+    
     modifier onlyCreator() {
         require(msg.sender == creator, "Not creator");
         _;
@@ -42,7 +43,7 @@ contract Campaign is ReentrancyGuard {
     }
 
 
-    // 💰 Contribute ETH
+    // 腸 Contribute ETH
     function contribute() external payable nonReentrant {
         require(block.timestamp < deadline, "Campaign ended");
         require(msg.value > 0, "Need ETH");
@@ -51,9 +52,12 @@ contract Campaign is ReentrancyGuard {
         emit Contributed(msg.sender, msg.value);
     }
 
-    // 🔙 Refund if goal not reached
+    // 漠 Refund if goal not reached
     function refund() external nonReentrant {
-        require(block.timestamp >= deadline, "Not ended yet");
+        // MODIFIED: Must wait 1 day after deadline AND no proof submitted
+        require(block.timestamp >= deadline + 1 days, "Must wait 1 day after deadline");
+        require(proofOfUseURIs.length == 0, "Cannot refund after proof submitted");
+        
         require(totalContributed < goal, "Goal met");
         uint256 amount = contributions[msg.sender];
         require(amount > 0, "Nothing to refund");
@@ -70,10 +74,13 @@ contract Campaign is ReentrancyGuard {
         active = false;
     }
 
-    // 🏆 Withdraw if goal reached
+    // 醇 Withdraw if goal reached
     function withdraw() external onlyCreator nonReentrant {
         require(block.timestamp >= deadline, "Not ended yet");
         require(totalContributed >= goal, "Goal not met");
+        // REQUIREMENT: Must have submitted at least one proof of use
+        require(proofOfUseURIs.length > 0, "Must submit at least one proof of use"); 
+        
         require(!withdrawn, "Already withdrawn");
         withdrawn = true;
         uint256 bal = address(this).balance;
@@ -82,7 +89,7 @@ contract Campaign is ReentrancyGuard {
         emit Withdrawn(creator, bal);
     }
     
-    // 🧾 UPDATED FUNCTION: Requirement on 'withdrawn' state removed.
+    // ｧｾ UPDATED FUNCTION: Requirement on 'withdrawn' state removed.
     function submitProofOfUse(string memory _proofURI) external onlyCreator {
         // REQUIREMENT REMOVED: require(withdrawn, "Funds must be withdrawn first");
         proofOfUseURIs.push(_proofURI);
